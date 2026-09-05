@@ -1,0 +1,21 @@
+name: Tests
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  profile-tests:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - run: python -m unittest discover -s tests -v
+      - name: Parse PowerShell entry points
+        shell: powershell
+        run: |
+          Get-ChildItem -Filter *.ps1 | ForEach-Object {
+            $errorsTask = $null
+            [void][System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$null, [ref]$errorsTask)
+            if ($errorsTask) { throw ($errorsTask | Out-String) }
+          }

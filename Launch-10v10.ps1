@@ -5,7 +5,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $exitCodeTask = 0
+$launcherLogTask = Join-Path $PSScriptRoot 'launcher-enable.log'
+function Write-LaunchLogTask([string]$Message) {
+    [IO.File]::AppendAllText($launcherLogTask, ('{0:o} PID={1} {2}{3}' -f [DateTimeOffset]::Now, $PID, $Message, [Environment]::NewLine))
+}
 try {
+    Write-LaunchLogTask ('Starting; CheckOnly=' + $CheckOnly)
+    # A desktop child can inherit PowerShell 7's module search path while
+    # running Windows PowerShell 5.1. Load this host's own Get-FileHash.
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -Force
     $Host.UI.RawUI.WindowTitle = 'WARNO - Enable 10v10'
     Write-Host 'WARNO - Enable 10v10' -ForegroundColor Cyan
     Write-Host 'Use from the Solo menu. Open a fresh Skirmish lobby afterward.'
@@ -44,6 +52,7 @@ try {
     # Fresh PID, process identity, module base, build hash and code bytes are
     # checked on every invocation. A status read never opens a write handle.
     $statusTask = Invoke-PatchTask
+    Write-LaunchLogTask ('Validated WARNO PID=' + $gamePidTask + '; patch active=' + $statusTask.memory_patch_active)
     if (-not $CheckOnly) {
         # The watcher must be ready before this session is allowed to save an
         # expanded lobby. It survives closing this visible launcher window.
@@ -65,6 +74,7 @@ try {
         $readyTask = Get-Content -LiteralPath $readyFileTask -Raw | ConvertFrom-Json
         if (-not $readyTask.ready) { throw ('Saved-lobby cleanup refused: ' + $readyTask.error) }
         Write-Host 'Automatic saved-lobby cleanup is ready.' -ForegroundColor Green
+        Write-LaunchLogTask 'Automatic saved-lobby cleanup is ready.'
     }
     if ($statusTask.memory_patch_active) {
         Write-Host '10v10 is already enabled in this WARNO session.' -ForegroundColor Green
@@ -82,6 +92,7 @@ try {
             throw 'Profile backup verification failed. No memory patch was applied.'
         }
         Write-Host ('Profile backup: ' + $copyTask)
+        Write-LaunchLogTask ('Profile backup verified: ' + $copyTask)
         $statusTask = Invoke-PatchTask -Apply
         if (-not $statusTask.memory_patch_active) { throw 'The patch was not enabled.' }
         # Reopen the game process with read-only access for independent read-back.
@@ -101,11 +112,16 @@ try {
         Write-Host 'To return to 4v4: close WARNO, run WARNO - Restore 4v4, then start WARNO normally.'
     }
     Write-Host 'The RAM patch ends when WARNO exits. Restart WARNO before multiplayer.'
+    Write-LaunchLogTask ('Finished; WARNO PID=' + $gamePidTask + '; patch active=' + $statusTask.memory_patch_active)
 }
 catch {
     $exitCodeTask = 1
     Write-Host ''
     Write-Host $_.Exception.Message -ForegroundColor Red
+    try {
+        Write-LaunchLogTask ('ERROR: ' + $_.Exception.Message)
+        Write-Host ('Error log: ' + $launcherLogTask)
+    } catch { Write-Host 'The launcher could not write its error log.' }
 }
 finally {
     if (-not $NoPause) {

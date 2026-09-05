@@ -8,6 +8,8 @@ param(
 $ErrorActionPreference = 'Stop'
 $setupExitTask = 0
 try {
+    # Use this host's module even when launched from another PowerShell version.
+    Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -Force
     Write-Host 'WARNO solo 10v10 - local setup' -ForegroundColor Cyan
     Write-Host 'Use Windows 64-bit and Python 3.14 or later. Setup does not patch the game.'
     if (-not $PythonExe) {

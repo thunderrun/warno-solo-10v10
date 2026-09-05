@@ -71,6 +71,12 @@ If you move it, run Setup again. Existing shortcuts with these names are updated
 Run Enable again for each new game process. Close its visible window after
 success; the cleanup helper continues in the background.
 
+The desktop shortcut runs a PowerShell launcher, which calls the Python
+memory patch. If it reports an error, check `launcher-enable.log` beside the
+scripts. A lobby stays 4v4 until the launcher reports success and you leave
+and reopen the lobby. After downloading an update, run
+`Create-Desktop-Shortcuts.ps1` to point your shortcuts at the updated copy.
+
 ### Restore vanilla 4v4
 
 1. Quit WARNO completely. Allow around ten seconds for background cleanup.

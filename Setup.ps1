@@ -55,7 +55,8 @@ try {
     $configTask | ConvertTo-Json | Set-Content -LiteralPath $configPathTask -Encoding UTF8
     if (-not $NoShortcuts) { & (Join-Path $PSScriptRoot 'Create-Desktop-Shortcuts.ps1') }
     Write-Host 'Setup complete. Your local paths are excluded from Git.' -ForegroundColor Green
-    Write-Host 'Enable 10v10: run the desktop shortcut from the Solo menu.'
+    Write-Host 'Enable 10v10: the desktop shortcut starts WARNO through Steam and applies the patch.'
+    Write-Host 'If WARNO is already running, go to the Solo menu before using the shortcut.'
     Write-Host 'Restore 4v4: close WARNO, run Restore 4v4, then restart WARNO.'
 } catch {
     $setupExitTask = 1

@@ -6,8 +6,8 @@ slots per side, plus a tool to restore saved lobby settings to vanilla 4v4.
 **This is an external memory patch, not a normal Steam Workshop mod.** It is
 unofficial and is not endorsed by Eugen Systems. It is intended for solo
 Skirmish; the current helper does not automatically detect multiplayer or the
-current menu. Use it only from the Solo menu. Quit and restore 4v4 before
-multiplayer.
+current menu. Use the shortcut to start a solo session, or run it from the
+Solo menu if WARNO is already open. Quit and restore 4v4 before multiplayer.
 
 ## What it changes
 
@@ -63,13 +63,20 @@ If you move it, run Setup again. Existing shortcuts with these names are updated
 
 ### Enable 10v10
 
-1. Start WARNO and go to the **Solo menu**, outside an existing lobby.
-2. Run **WARNO - Enable 10v10** and wait for the green success message.
+1. Run **WARNO - Enable 10v10**. It checks the saved lobby, starts WARNO through
+   Steam if needed, waits for its window, then applies the patch automatically.
+   If WARNO is already running, go to the **Solo menu** before running it.
+2. Wait for the green success message. The game can continue loading afterward.
 3. Open **Solo -> Skirmish**, then add AI: you plus nine allied AI versus ten
    enemy AI. If a lobby was already open, leave and reopen it.
 
 Run Enable again for each new game process. Close its visible window after
 success; the cleanup helper continues in the background.
+
+Startup waits up to three minutes. If Steam needs an update or displays a
+launch prompt, finish that step and run the shortcut again. `-CheckOnly`
+never launches WARNO or changes its saved profile. An interrupted previous
+cleanup is repaired, with a backup if changes are needed, before a new launch.
 
 The desktop shortcut runs a PowerShell launcher, which calls the Python
 memory patch. If it reports an error, check `launcher-enable.log` beside the

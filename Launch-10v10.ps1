@@ -1,6 +1,8 @@
 param(
     [switch]$CheckOnly,
-    [switch]$NoPause
+    [switch]$NoPause,
+    [ValidateRange(10, 600)]
+    [int]$StartupTimeoutSeconds = 180
 )
 
 $ErrorActionPreference = 'Stop'
@@ -16,7 +18,8 @@ try {
     Import-Module (Join-Path $PSHOME 'Modules\Microsoft.PowerShell.Utility\Microsoft.PowerShell.Utility.psd1') -Force
     $Host.UI.RawUI.WindowTitle = 'WARNO - Enable 10v10'
     Write-Host 'WARNO - Enable 10v10' -ForegroundColor Cyan
-    Write-Host 'Use from the Solo menu. Open a fresh Skirmish lobby afterward.'
+    Write-Host 'Starts WARNO through Steam if needed, then enables solo 10v10.'
+    Write-Host 'If WARNO is already running, use this from the Solo menu.'
     Write-Host ''
 
     . (Join-Path $PSScriptRoot 'Load-Config.ps1')
@@ -28,14 +31,49 @@ try {
         throw 'The memory patch script is missing from the launcher folder.'
     }
 
-    $gamesTask = @(Get-Process -Name WARNO -ErrorAction SilentlyContinue | Where-Object {
-        $_.Path -eq $gameExeTask
-    })
-    if ($gamesTask.Count -eq 0) {
-        throw 'Start WARNO, go to the Solo menu, then run this shortcut again.'
+    function Get-WarnoProcessTask {
+        $foundTask = @(Get-Process -Name WARNO -ErrorAction SilentlyContinue)
+        if ($foundTask.Count -gt 1) {
+            throw 'More than one WARNO process was found. Close the extra instance first.'
+        }
+        if ($foundTask.Count -eq 1 -and $foundTask[0].Path -ne $gameExeTask) {
+            throw 'The running WARNO does not match the configured executable. Close it or run Setup.ps1 again.'
+        }
+        return $foundTask
     }
-    if ($gamesTask.Count -ne 1) {
-        throw 'More than one WARNO process was found. Close the extra instance first.'
+    $gamesTask = @(Get-WarnoProcessTask)
+    if ($gamesTask.Count -eq 0) {
+        if ($CheckOnly) { throw 'WARNO is not running. CheckOnly does not start the game or change its profile.' }
+
+        # An interrupted cleanup may leave an expanded profile behind. Repair
+        # it while the game is closed, before starting an unpatched process.
+        Write-Host 'Checking the saved lobby before starting WARNO...'
+        $cleanupOutputTask = & $pythonExeTask (Join-Path $PSScriptRoot 'profile_cleanup.py') --repair 2>&1
+        if ($LASTEXITCODE -ne 0) { throw ($cleanupOutputTask | Out-String) }
+        $cleanupResultTask = ($cleanupOutputTask | Out-String) | ConvertFrom-Json
+        Write-LaunchLogTask ('Pre-launch lobby cleanup; changed=' + $cleanupResultTask.changed)
+        Write-Host 'Starting WARNO through Steam. Waiting for its window...'
+        Write-LaunchLogTask 'Starting WARNO through Steam.'
+        Start-Process -FilePath 'steam://rungameid/1611600'
+        $startupDeadlineTask = [DateTime]::UtcNow.AddSeconds($StartupTimeoutSeconds)
+        while ($gamesTask.Count -eq 0) {
+            if ([DateTime]::UtcNow -ge $startupDeadlineTask) {
+                throw 'WARNO did not start in time. Check Steam for an update or launch prompt, then run this shortcut again.'
+            }
+            Start-Sleep -Milliseconds 500
+            $gamesTask = @(Get-WarnoProcessTask)
+        }
+        $startingGameTask = $gamesTask[0]
+        while ($true) {
+            $startingGameTask.Refresh()
+            if ($startingGameTask.HasExited) { throw 'WARNO exited during startup. No memory patch was applied.' }
+            if ($startingGameTask.MainWindowHandle -ne [IntPtr]::Zero) { break }
+            if ([DateTime]::UtcNow -ge $startupDeadlineTask) {
+                throw 'WARNO started but its window did not appear in time. Let startup finish, then run this shortcut again.'
+            }
+            Start-Sleep -Milliseconds 500
+        }
+        Write-LaunchLogTask ('WARNO window is ready; PID=' + $startingGameTask.Id)
     }
     $gamePidTask = $gamesTask[0].Id
 

@@ -5,7 +5,7 @@ $shellTask = New-Object -ComObject WScript.Shell
 $powerShellTask = Join-Path $env:SystemRoot 'System32\WindowsPowerShell\v1.0\powershell.exe'
 $iconTask = $gameExeTask + ',0'
 $itemsTask = @(
-    @{ Name='WARNO - Enable 10v10'; Script='Launch-10v10.ps1'; Description='Start WARNO at the Solo menu, run this, then open Skirmish for 10v10.' },
+    @{ Name='WARNO - Enable 10v10'; Script='Launch-10v10.ps1'; Description='Start WARNO through Steam and enable solo 10v10. If already running, use from the Solo menu.' },
     @{ Name='WARNO - Restore 4v4'; Script='Repair-Skirmish.ps1'; Description='Close WARNO, run this to repair the saved lobby, then start WARNO for vanilla 4v4.' }
 )
 foreach ($itemTask in $itemsTask) {
